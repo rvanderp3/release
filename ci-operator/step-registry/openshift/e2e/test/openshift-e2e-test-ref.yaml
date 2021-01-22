@@ -55,7 +55,7 @@ ref:
   resources:
     requests:
       cpu: "3"
-      memory: 600Mi
+      memory: 1Gi
     limits:
       memory: 4Gi
   documentation: |-
