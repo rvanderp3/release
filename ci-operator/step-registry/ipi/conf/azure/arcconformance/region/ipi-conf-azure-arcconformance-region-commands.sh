@@ -6,13 +6,36 @@ set -o pipefail
 
 # TODO remove this step once Arc is available in more regions.
 
-# if the env var wasn't provided we stick to the leased region
-if [[ -z "$AZURE_REGION" ]]; then
-  exit 0
+if [[ -z "$LEASED_RESOURCE" ]]; then
+    echo "LEASED_RESOURCE is undefined"
+    exit 1
 fi
 
-if [[ "$LEASED_RESOURCE" == "$AZURE_REGION" ]]; then
-  exit 0
+# If an Azure region is provided, check to see if that region matches the lease.
+if [[ ! -z "$AZURE_REGION" ]]; then    
+    if [[ "$LEASED_RESOURCE" == "$AZURE_REGION" ]]; then
+        echo AZURE_REGION $AZURE_REGION matches LEASED_RESOURCE $LEASED_RESOURCE    
+        exit 0
+    fi
+fi
+
+# If not, check to see if there is an allowed region list to check
+if [[ ! -z "$AZURE_ARC_REGIONS" ]]; then    
+    IFS=" " read -r -a AZURE_ARC_REGIONS <<< "$AZURE_ARC_REGIONS"   
+    
+    for ALLOWED_REGION in "${AZURE_ARC_REGIONS[@]}"; do        
+        if [ $ALLOWED_REGION == $LEASED_RESOURCE ]; then
+            echo "Leased region $LEASED_RESOURCE is enabled for ARC. Allowing use of that lease."
+            exit 0
+        fi        
+    done
+    # Select a region at random since the LEASED_RESOURCE is not allowed
+    AZURE_REGION=${AZURE_ARC_REGIONS[$RANDOM % ${#AZURE_ARC_REGIONS[@]}]}
+fi
+
+if [[ -z "$AZURE_REGION" ]]; then
+    # Nothing to do.
+    exit 0
 fi
 
 echo "================================================"
